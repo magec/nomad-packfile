@@ -46,7 +46,19 @@ func NewFromFile(file string, cmd *cobra.Command) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = yaml.Unmarshal(yamlFile, &config)
+	if err != nil {
+		return nil, err
+	}
+
+	environment, err := cmd.Flags().GetString("environment")
+	if environment != "" {
+		newEnvironments := map[string]ReleaseConfig{}
+		newEnvironments[environment] = config.Environments[environment]
+		config.Environments = newEnvironments
+	}
+
 	config.Path = file
 	config.NomadPackBinary, err = cmd.Flags().GetString("nomad-pack-binary")
 
