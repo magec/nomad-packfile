@@ -31,7 +31,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "packfile",
+	Use:   "nomad-packfile",
 	Short: "Declaratively deploy your nomad-packs.",
 	Long:  "Packfile is a tool that allows declare the desired state of your nomad-packs.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
