@@ -59,8 +59,8 @@ func (release ReleaseNode) Plan() error {
 	}
 
 	return nomadPack.Plan(release.workDir, true, "", release.Registry, release.Pack, release.VarFiles, release.Vars)
-
 }
+
 func (release ReleaseNode) Run() error {
 	nomadPack, err := release.NomadPackFile.NomadPack()
 	nomadPack = nomadPack.NomadAddr(release.NomadAddr).NomadToken(release.NomadToken)
@@ -70,9 +70,18 @@ func (release ReleaseNode) Run() error {
 	}
 
 	return nomadPack.Run(release.workDir, true, "", release.Registry, release.Pack, release.VarFiles, release.Vars)
-
 }
 
+func (release ReleaseNode) Render() error {
+	nomadPack, err := release.NomadPackFile.NomadPack()
+	nomadPack = nomadPack.NomadAddr(release.NomadAddr).NomadToken(release.NomadToken)
+
+	if err != nil {
+		log.Fatalf("Error getting initializing nomad-pack: %s", err)
+	}
+
+	return nomadPack.Render(release.workDir, true, "", release.Registry, release.Pack, release.VarFiles, release.Vars)
+}
 func New(config configpkg.Config, logger *zap.Logger) *NomadPackFile {
 	return &NomadPackFile{config: config, logger: logger}
 }
@@ -89,6 +98,23 @@ func (n *NomadPackFile) Plan() error {
 	}
 	for _, release := range n.releases {
 		err := release.Plan()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (n *NomadPackFile) Render() error {
+	for _, registry := range n.registries {
+		err := registry.Plan()
+		if err != nil {
+			return err
+		}
+	}
+	for _, release := range n.releases {
+		err := release.Render()
 		if err != nil {
 			return err
 		}

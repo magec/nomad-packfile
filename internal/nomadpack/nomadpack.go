@@ -153,3 +153,52 @@ func (nomadPack *NomadPack) Run(workDir string, diff bool, ref string, registry 
 
 	return nil
 }
+
+func (nomadPack *NomadPack) Render(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
+	args := []string{"render"}
+	if registry != "" {
+		args = append(args, "--registry")
+		args = append(args, registry)
+	}
+	if ref != "" {
+		args = append(args, "--ref")
+		args = append(args, ref)
+	}
+
+	for _, varFile := range varFiles {
+		args = append(args, "-var-file")
+		args = append(args, varFile)
+	}
+
+	for key, value := range vars {
+		args = append(args, "-var")
+		args = append(args, key+"="+value)
+	}
+	args = append(args, pack)
+
+	cmd := exec.Command(nomadPack.binaryPath, args...)
+	if nomadPack.nomadAddr != "" {
+		cmd.Env = append(cmd.Env, "NOMAD_ADDR="+nomadPack.nomadAddr)
+	}
+	if nomadPack.nomadToken != "" {
+		cmd.Env = append(cmd.Env, "NOMAD_TOKEN="+nomadPack.nomadToken)
+	}
+
+	fmt.Println("Running plan", cmd)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Dir = workDir
+	cmd.Env = append(cmd.Env, "HOME="+os.Getenv("HOME"))
+	cmd.Env = append(cmd.Env, "TERM="+os.Getenv("TERM"))
+
+	if err := cmd.Run(); err != nil {
+		pterm.Error.Println("Error running plan")
+		pterm.Error.Println(stdout.String())
+		pterm.Error.Println(stderr.String())
+		return err
+	}
+	pterm.Println(stdout.String())
+
+	return nil
+}
