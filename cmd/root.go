@@ -58,7 +58,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().String("environment", "default", "Specify the environment name.")
+	rootCmd.PersistentFlags().String("environment", "", "Specify the environment name.")
+	rootCmd.PersistentFlags().String("release", "", "Specify the release (this filters out any release apart from the specified one).")
 	rootCmd.PersistentFlags().StringP("file", "f", "packfile.yaml", `Load config from file or directory`)
 	rootCmd.PersistentFlags().String("nomad-pack-binary", "nomad-pack", `Path to the nomad-pack binary.`)
 	rootCmd.PersistentFlags().String("log-level", "fatal", `Log Level.`)

@@ -59,6 +59,17 @@ func NewFromFile(file string, cmd *cobra.Command) (*Config, error) {
 		config.Environments = newEnvironments
 	}
 
+	release, err := cmd.Flags().GetString("release")
+	if release != "" {
+		newReleases := []ReleaseConfig{}
+		for _, r := range config.Releases {
+			if r.Name == release {
+				newReleases = append(newReleases, r)
+			}
+		}
+		config.Releases = newReleases
+	}
+
 	config.Path = file
 	config.NomadPackBinary, err = cmd.Flags().GetString("nomad-pack-binary")
 
