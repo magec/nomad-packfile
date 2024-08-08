@@ -8,9 +8,18 @@ require (
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/gookit/color v1.5.4 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/hashicorp/cronexpr v1.1.2 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
+	github.com/hashicorp/nomad/api v0.0.0-20240807192620-bcb0ee30314c // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pterm/pterm v0.12.79 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/spf13/cobra v1.8.1 // indirect

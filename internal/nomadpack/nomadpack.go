@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/exec"
 
+	nomad "github.com/hashicorp/nomad/api"
 	"github.com/pterm/pterm"
 	"go.uber.org/zap"
 )
 
+// NomadPack is a wrapper around the Nomad binary that provides a way to interact with Nomad using the Nomad Pack CLI.
 type NomadPack struct {
 	binaryPath string
 	logger     *zap.Logger
@@ -38,167 +40,202 @@ func (nomadPack *NomadPack) NomadToken(nomad_token string) *NomadPack {
 	return nomadPack
 }
 
+// Add nomad pack registries
+// name: the name of the registry.
+// source: the source of the registry.
+// ref: speficic git ref of the registry or pack to be added.
+// target: A specific pack within the registry to be added.
 func (nomadPack *NomadPack) AddRegistry(name, source string, ref, target *string) error {
-	pterm.DefaultBasicText.Println("Adding registry", name, source)
-
-	cmd := exec.Command(nomadPack.binaryPath, "registry", "add", name, source)
-	var stderr bytes.Buffer
-
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		pterm.Error.Println("Error adding registry", name, source)
-		pterm.Error.Println(stderr.String())
-		return err
+	params := []string{"registry", "add", name, source}
+	if ref != nil {
+		params = append(params, "--ref")
+		params = append(params, *ref)
 	}
 
-	pterm.DefaultBasicText.Println("Successfully added.")
-	return nil
+	if target != nil {
+		params = append(params, "--target")
+		params = append(params, *target)
+	}
 
+	pterm.DefaultBasicText.Println("Adding registry", name, source)
+	cmd := exec.Command(nomadPack.binaryPath, params...)
+
+	_, err := nomadPack.runCommand(cmd)
+	if err != nil {
+		pterm.DefaultBasicText.Println("Successfully added.")
+	}
+	return err
 }
 
+// Plan runs the Nomad Pack plan command.
+// workDir: the directory nomad-pack will be run in.
+// diff: whether to show the diff.
+// ref: speficic git ref of the registry or pack to be added.
+// registry: the registry to use.
+// pack: the pack to run.
+// varFiles: an array of var files to use.
+// vars: a map of vars to use.
 func (nomadPack *NomadPack) Plan(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
-	args := []string{"plan", "--diff", "--exit-code-makes-changes=0"}
+	err := nomadPack.ensureValidAuth()
+	if err != nil {
+		pterm.Error.Printf("Could not connect to Nomad Server: %v\n", err)
+		return err
+	}
+	params := []string{"plan", "--diff", "--exit-code-makes-changes=0"}
 	if registry != "" {
-		args = append(args, "--registry")
-		args = append(args, registry)
+		params = append(params, "--registry")
+		params = append(params, registry)
 	}
 	if ref != "" {
-		args = append(args, "--ref")
-		args = append(args, ref)
+		params = append(params, "--ref")
+		params = append(params, ref)
 	}
 
 	for _, varFile := range varFiles {
-		args = append(args, "-var-file")
-		args = append(args, varFile)
+		params = append(params, "-var-file")
+		params = append(params, varFile)
 	}
 
 	for key, value := range vars {
-		args = append(args, "-var")
-		args = append(args, key+"="+value)
+		params = append(params, "-var")
+		params = append(params, key+"="+value)
 	}
-	args = append(args, pack)
+	params = append(params, pack)
 
-	cmd := exec.Command(nomadPack.binaryPath, args...)
-	if nomadPack.nomadAddr != "" {
-		cmd.Env = append(cmd.Env, "NOMAD_ADDR="+nomadPack.nomadAddr)
+	cmd := exec.Command(nomadPack.binaryPath, params...)
+	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
+
+	pterm.DefaultBasicText.Println("Running Plan.")
+	_, err = nomadPack.runCommand(cmd)
+	if err != nil {
+		pterm.DefaultBasicText.Println("Plan successfully ran.")
 	}
-	if nomadPack.nomadToken != "" {
-		cmd.Env = append(cmd.Env, "NOMAD_TOKEN="+nomadPack.nomadToken)
-	}
-
-	fmt.Println("Running plan", cmd)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = workDir
-	cmd.Env = append(cmd.Env, "HOME="+os.Getenv("HOME"))
-	cmd.Env = append(cmd.Env, "TERM="+os.Getenv("TERM"))
-
-	if err := cmd.Run(); err != nil {
-		pterm.Error.Println("Error running plan")
-		pterm.Error.Println(stdout.String())
-		pterm.Error.Println(stderr.String())
-		return err
-	}
-	pterm.Println(stdout.String())
-
-	return nil
+	return err
 }
 
 func (nomadPack *NomadPack) Run(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
-	args := []string{"run"}
+	err := nomadPack.ensureValidAuth()
+	if err != nil {
+		pterm.Error.Printf("Could not connect to Nomad Server: %v\n", err)
+		return err
+	}
+	params := []string{"run"}
 	if registry != "" {
-		args = append(args, "--registry")
-		args = append(args, registry)
+		params = append(params, "--registry")
+		params = append(params, registry)
 	}
 	if ref != "" {
-		args = append(args, "--ref")
-		args = append(args, ref)
+		params = append(params, "--ref")
+		params = append(params, ref)
 	}
 
 	for _, varFile := range varFiles {
-		args = append(args, "-var-file")
-		args = append(args, varFile)
+		params = append(params, "-var-file")
+		params = append(params, varFile)
 	}
 
 	for key, value := range vars {
-		args = append(args, "-var")
-		args = append(args, key+"="+value)
+		params = append(params, "-var")
+		params = append(params, key+"="+value)
 	}
-	args = append(args, pack)
+	params = append(params, pack)
 
-	cmd := exec.Command(nomadPack.binaryPath, args...)
-	if nomadPack.nomadAddr != "" {
-		cmd.Env = append(cmd.Env, "NOMAD_ADDR="+nomadPack.nomadAddr)
+	cmd := exec.Command(nomadPack.binaryPath, params...)
+	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
+
+	pterm.DefaultBasicText.Println("Running Run.")
+	_, err = nomadPack.runCommand(cmd)
+	if err != nil {
+		pterm.DefaultBasicText.Println("Run successfully ran.")
 	}
-	if nomadPack.nomadToken != "" {
-		cmd.Env = append(cmd.Env, "NOMAD_TOKEN="+nomadPack.nomadToken)
-	}
-
-	fmt.Println("Running plan", cmd)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = workDir
-	cmd.Env = append(cmd.Env, "HOME="+os.Getenv("HOME"))
-	cmd.Env = append(cmd.Env, "TERM="+os.Getenv("TERM"))
-
-	if err := cmd.Run(); err != nil {
-		pterm.Error.Println("Error running plan")
-		pterm.Error.Println(stdout.String())
-		pterm.Error.Println(stderr.String())
-		return err
-	}
-	pterm.Println(stdout.String())
-
-	return nil
+	return err
 }
 
 func (nomadPack *NomadPack) Render(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
-	args := []string{"render"}
+	params := []string{"render"}
 	if registry != "" {
-		args = append(args, "--registry")
-		args = append(args, registry)
+		params = append(params, "--registry")
+		params = append(params, registry)
 	}
 	if ref != "" {
-		args = append(args, "--ref")
-		args = append(args, ref)
+		params = append(params, "--ref")
+		params = append(params, ref)
 	}
 
 	for _, varFile := range varFiles {
-		args = append(args, "-var-file")
-		args = append(args, varFile)
+		params = append(params, "-var-file")
+		params = append(params, varFile)
 	}
 
 	for key, value := range vars {
-		args = append(args, "-var")
-		args = append(args, key+"="+value)
+		params = append(params, "-var")
+		params = append(params, key+"="+value)
 	}
-	args = append(args, pack)
+	params = append(params, pack)
 
-	cmd := exec.Command(nomadPack.binaryPath, args...)
+	cmd := exec.Command(nomadPack.binaryPath, params...)
+	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
+
+	pterm.DefaultBasicText.Println("Running Render.")
+	stdout, err := nomadPack.runCommand(cmd)
+	if err != nil {
+		pterm.DefaultBasicText.Println("Render successfully ran.")
+	}
+	pterm.Println(stdout)
+
+	return err
+}
+
+func (nomadPack *NomadPack) envForCommand() []string {
+	var env = []string{}
+
+	// Nomad credentials
 	if nomadPack.nomadAddr != "" {
-		cmd.Env = append(cmd.Env, "NOMAD_ADDR="+nomadPack.nomadAddr)
+		env = append(env, "NOMAD_ADDR="+nomadPack.nomadAddr)
 	}
 	if nomadPack.nomadToken != "" {
-		cmd.Env = append(cmd.Env, "NOMAD_TOKEN="+nomadPack.nomadToken)
+		env = append(env, "NOMAD_TOKEN="+nomadPack.nomadToken)
 	}
 
-	fmt.Println("Running plan", cmd)
+	env = append(env, "HOME="+os.Getenv("HOME"))
+	env = append(env, "TERM="+os.Getenv("TERM"))
+	env = append(env, "PATH="+os.Getenv("PATH"))
+
+	return env
+}
+
+func (nomadPack *NomadPack) runCommand(cmd *exec.Cmd) (string, error) {
+	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Dir = workDir
-	cmd.Env = append(cmd.Env, "HOME="+os.Getenv("HOME"))
-	cmd.Env = append(cmd.Env, "TERM="+os.Getenv("TERM"))
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		pterm.Error.Println("Error running plan")
+		pterm.Error.Println("Error running command")
+		pterm.Error.Println("Command:", cmd.String())
 		pterm.Error.Println(stdout.String())
 		pterm.Error.Println(stderr.String())
+		return stdout.String(), err
+	}
+
+	return stdout.String(), nil
+}
+
+func (nomadPack *NomadPack) ensureValidAuth() error {
+	if nomadPack.nomadAddr == "" {
+		return fmt.Errorf("Nomad address is required")
+	}
+	if nomadPack.nomadToken == "" {
+		return fmt.Errorf("Nomad token is required")
+	}
+	nomadClient, err := nomad.NewClient(&nomad.Config{Address: nomadPack.nomadAddr, SecretID: nomadPack.nomadToken})
+	if err != nil {
 		return err
 	}
-	pterm.Println(stdout.String())
+	_, err = nomadClient.Status().Peers()
+	if err != nil {
+		return fmt.Errorf("Could not connect to Nomad, error while trying to fetch then status of peers: %v", err)
+	}
 
 	return nil
 }

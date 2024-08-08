@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// This is a simple AST for the NomadPackFile
 type NomadPackFile struct {
 	config     configpkg.Config
 	registries []RegistryNode
@@ -21,8 +22,12 @@ type NomadPackFile struct {
 }
 
 type RegistryNode struct {
-	Name          string
-	URL           string
+	/// Name of the Registry this is the name that will be used in releases when you need to refer to this registry
+	Name string
+
+	/// URL of the registry
+	URL string
+
 	Ref           *string
 	Target        *string
 	NomadPackFile *NomadPackFile

@@ -33,7 +33,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "nomad-packfile",
 	Short: "Declaratively deploy your nomad-packs.",
-	Long:  "Packfile is a tool that allows declare the desired state of your nomad-packs.",
+	Long:  "Declare the desired state of your packs and let nomad-packfile synchronize it with your Noma cluster.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		log = logger.NewLogger(cmd.Flag("log-level").Value.String())
 
