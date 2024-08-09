@@ -10,13 +10,14 @@ import (
 
 	configpkg "github.com/magec/nomad-packfile/internal/config"
 	"github.com/magec/nomad-packfile/internal/nomadpack"
+	"github.com/pterm/pterm"
 	"go.uber.org/zap"
 )
 
 // This is a simple AST for the NomadPackFile
 type NomadPackFile struct {
 	config     configpkg.Config
-	registries []RegistryNode
+	registries map[string]RegistryNode
 	releases   []ReleaseNode
 	logger     *zap.Logger
 }
@@ -36,7 +37,7 @@ type RegistryNode struct {
 type ReleaseNode struct {
 	Name          string
 	Pack          string
-	Registry      string
+	Registry      RegistryNode
 	VarFiles      []string
 	Vars          map[string]string
 	workDir       string
@@ -56,40 +57,42 @@ func (registry RegistryNode) Plan() error {
 }
 
 func (release ReleaseNode) Plan() error {
-	nomadPack, err := release.NomadPackFile.NomadPack()
-	nomadPack = nomadPack.NomadAddr(release.NomadAddr).NomadToken(release.NomadToken)
-
+	nomadPack, err := release.nomadPack()
 	if err != nil {
 		log.Fatalf("Error getting initializing nomad-pack: %s", err)
 	}
 
-	return nomadPack.Plan(release.workDir, true, "", release.Registry, release.Pack, release.VarFiles, release.Vars)
+	return nomadPack.Plan(release.workDir, true, release.Registry.Name, release.Registry.Ref, release.Pack, release.VarFiles, release.Vars)
 }
 
 func (release ReleaseNode) Run() error {
-	nomadPack, err := release.NomadPackFile.NomadPack()
-	nomadPack = nomadPack.NomadAddr(release.NomadAddr).NomadToken(release.NomadToken)
+	nomadPack, err := release.nomadPack()
 
 	if err != nil {
 		log.Fatalf("Error getting initializing nomad-pack: %s", err)
 	}
-
-	return nomadPack.Run(release.workDir, true, "", release.Registry, release.Pack, release.VarFiles, release.Vars)
+	return nomadPack.Run(release.workDir, true, release.Registry.Name, release.Registry.Ref, release.Pack, release.VarFiles, release.Vars)
 }
 
 func (release ReleaseNode) Render() error {
-	nomadPack, err := release.NomadPackFile.NomadPack()
-	nomadPack = nomadPack.NomadAddr(release.NomadAddr).NomadToken(release.NomadToken)
-
+	nomadPack, err := release.nomadPack()
 	if err != nil {
 		log.Fatalf("Error getting initializing nomad-pack: %s", err)
 	}
 
-	return nomadPack.Render(release.workDir, true, "", release.Registry, release.Pack, release.VarFiles, release.Vars)
+	return nomadPack.Render(release.workDir, true, release.Registry.Name, release.Registry.Ref, release.Pack, release.VarFiles, release.Vars)
 }
+
+func (release ReleaseNode) nomadPack() (nomadPack *nomadpack.NomadPack, err error) {
+	nomadPack, err = release.NomadPackFile.NomadPack()
+	nomadPack = nomadPack.NomadAddr(release.NomadAddr).NomadToken(release.NomadToken)
+	return nomadPack, err
+}
+
 func New(config configpkg.Config, logger *zap.Logger) *NomadPackFile {
-	return &NomadPackFile{config: config, logger: logger}
+	return &NomadPackFile{config: config, logger: logger, registries: make(map[string]RegistryNode)}
 }
+
 func (n *NomadPackFile) NomadPack() (*nomadpack.NomadPack, error) {
 	return nomadpack.New(n.config.NomadPackBinary, n.logger)
 }
@@ -156,13 +159,18 @@ type templateContext struct {
 
 func (n *NomadPackFile) Compile() error {
 	for _, registryConfig := range n.config.Registries {
-		n.registries = append(n.registries, RegistryNode{
+		if n.registries[registryConfig.Name].Name != "" {
+			pterm.Warning.Printf("Registry %s already exists, skipping", registryConfig.Name)
+			continue
+		}
+
+		n.registries[registryConfig.Name] = RegistryNode{
 			Name:          registryConfig.Name,
 			URL:           registryConfig.URL,
 			Ref:           registryConfig.Ref,
 			Target:        registryConfig.Target,
 			NomadPackFile: n,
-		})
+		}
 	}
 
 	for name, environmentRelease := range n.config.Environments {
@@ -190,7 +198,11 @@ func (n *NomadPackFile) Compile() error {
 				log.Fatalf("Invalid pack name: %s", release.Pack)
 			}
 
-			registry := splitPack[0]
+			if n.registries[splitPack[0]].Name == "" {
+				log.Fatalf("Registry %s not found", splitPack[0])
+			}
+
+			registry := n.registries[splitPack[0]]
 			pack := splitPack[1]
 			workDir := n.config.WorkDir()
 
@@ -206,6 +218,7 @@ func (n *NomadPackFile) Compile() error {
 				log.Fatalf("Error interpreting template in nomad-addr: %s, err: %s.", release.NomadAddr, err)
 				panic(err)
 			}
+
 			newVarFiles := []string{}
 			for _, varFile := range release.VarFiles {
 				newVarFile, err := execTemplate(varFile, context)
@@ -254,7 +267,7 @@ func environmentToHash() (result map[string]string) {
 }
 
 func execTemplate(tmpl string, context templateContext) (string, error) {
-	t, err := template.New("nomad-pack-template").Parse(tmpl)
+	t, err := template.New("nomad-pack-template").Option("missingkey=zero").Parse(tmpl)
 	if err != nil {
 		return "", err
 	}

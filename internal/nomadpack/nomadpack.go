@@ -75,7 +75,7 @@ func (nomadPack *NomadPack) AddRegistry(name, source string, ref, target *string
 // pack: the pack to run.
 // varFiles: an array of var files to use.
 // vars: a map of vars to use.
-func (nomadPack *NomadPack) Plan(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
+func (nomadPack *NomadPack) Plan(workDir string, diff bool, registry string, ref *string, pack string, varFiles []string, vars map[string]string) error {
 	err := nomadPack.ensureValidAuth()
 	if err != nil {
 		pterm.Error.Printf("Could not connect to Nomad Server: %v\n", err)
@@ -86,9 +86,9 @@ func (nomadPack *NomadPack) Plan(workDir string, diff bool, ref string, registry
 		params = append(params, "--registry")
 		params = append(params, registry)
 	}
-	if ref != "" {
+	if ref != nil {
 		params = append(params, "--ref")
-		params = append(params, ref)
+		params = append(params, *ref)
 	}
 
 	for _, varFile := range varFiles {
@@ -103,17 +103,18 @@ func (nomadPack *NomadPack) Plan(workDir string, diff bool, ref string, registry
 	params = append(params, pack)
 
 	cmd := exec.Command(nomadPack.binaryPath, params...)
-	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
+	cmd.Dir = workDir
 
 	pterm.DefaultBasicText.Println("Running Plan.")
-	_, err = nomadPack.runCommand(cmd)
+	stdout, err := nomadPack.runCommand(cmd)
 	if err != nil {
 		pterm.DefaultBasicText.Println("Plan successfully ran.")
 	}
+	pterm.Println(stdout)
 	return err
 }
 
-func (nomadPack *NomadPack) Run(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
+func (nomadPack *NomadPack) Run(workDir string, diff bool, registry string, ref *string, pack string, varFiles []string, vars map[string]string) error {
 	err := nomadPack.ensureValidAuth()
 	if err != nil {
 		pterm.Error.Printf("Could not connect to Nomad Server: %v\n", err)
@@ -124,9 +125,9 @@ func (nomadPack *NomadPack) Run(workDir string, diff bool, ref string, registry 
 		params = append(params, "--registry")
 		params = append(params, registry)
 	}
-	if ref != "" {
+	if ref != nil {
 		params = append(params, "--ref")
-		params = append(params, ref)
+		params = append(params, *ref)
 	}
 
 	for _, varFile := range varFiles {
@@ -141,7 +142,7 @@ func (nomadPack *NomadPack) Run(workDir string, diff bool, ref string, registry 
 	params = append(params, pack)
 
 	cmd := exec.Command(nomadPack.binaryPath, params...)
-	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
+	cmd.Dir = workDir
 
 	pterm.DefaultBasicText.Println("Running Run.")
 	_, err = nomadPack.runCommand(cmd)
@@ -151,15 +152,15 @@ func (nomadPack *NomadPack) Run(workDir string, diff bool, ref string, registry 
 	return err
 }
 
-func (nomadPack *NomadPack) Render(workDir string, diff bool, ref string, registry string, pack string, varFiles []string, vars map[string]string) error {
+func (nomadPack *NomadPack) Render(workDir string, diff bool, registry string, ref *string, pack string, varFiles []string, vars map[string]string) error {
 	params := []string{"render"}
 	if registry != "" {
 		params = append(params, "--registry")
 		params = append(params, registry)
 	}
-	if ref != "" {
+	if ref != nil {
 		params = append(params, "--ref")
-		params = append(params, ref)
+		params = append(params, *ref)
 	}
 
 	for _, varFile := range varFiles {
@@ -174,7 +175,7 @@ func (nomadPack *NomadPack) Render(workDir string, diff bool, ref string, regist
 	params = append(params, pack)
 
 	cmd := exec.Command(nomadPack.binaryPath, params...)
-	cmd.Env = append(cmd.Env, nomadPack.envForCommand()...)
+	cmd.Dir = workDir
 
 	pterm.DefaultBasicText.Println("Running Render.")
 	stdout, err := nomadPack.runCommand(cmd)
