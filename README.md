@@ -103,16 +103,16 @@ They will be referenced in releases when you declare the name of the pack to see
 
 Registries can have:
 
-- *name*: The name of the registry, it will be used in releases to reference this registry. It will also be used when fetching the registries.
-- *url*: Url of the registry (see `nomad-pack registry add --help` for more information).
-- *Ref*: Specific git ref of the registry or pack to be added. Supports tags,
+- **name**: The name of the registry, it will be used in releases to reference this registry. It will also be used when fetching the registries.
+- **url**: Url of the registry (see `nomad-pack registry add --help` for more information).
+- **Ref**: Specific git ref of the registry or pack to be added. Supports tags,
         SHA, and latest. If no ref is specified, defaults to latest. Running
         "nomad registry add" multiple times for the same ref is idempotent,
         however running "nomad-pack registry add" without specifying a
         ref, or when specifying @latest, is destructive, and will overwrite
         current @latest in the global cache. Using ref with a file path is not
         supported.
-- *Target*: A specific pack within the registry to be added.
+- **Target**: A specific pack within the registry to be added.
 
 ### Releases
 This is where you define the releases themselves. It will reference the pack and also permits declaring variable files and variables. Note
@@ -120,13 +120,13 @@ that you can use templates inside these values.
 
 Releases can have:
 
-- *name*: The name of the release.
-- *pack*: The reference of the pack in the form of (`registry/pack`).
-- *var-files*: An array of varfiles to be added to
-- *vars*: An array of vars to be added to `nomad-pack` command invocation.
-- *environments*: This permits filtering out environments in case you don't want a given release to be deployed to every environment.
-- *nomad-addr*: Nomad addr to be used to deploy. This is usually set in the environment configuration.
-- *nomad-token*: Nomad Token to be used to deploy. This is usually set in the environment configuration using an templating and an env var.
+- **name**: The name of the release.
+- **pack**: The reference of the pack in the form of (`registry/pack`).
+- **var-files**: An array of varfiles to be added to
+- **vars**: An array of vars to be added to `nomad-pack` command invocation.
+- **environments**: This permits filtering out environments in case you don't want a given release to be deployed to every environment.
+- **nomad-addr**: Nomad addr to be used to deploy. This is usually set in the environment configuration.
+- **nomad-token**: Nomad Token to be used to deploy. This is usually set in the environment configuration using an templating and an env var.
 
 #### Templating
 As mentioned, you can use templating in (`nomad-addr`, `nomad-token`, `var-files` and `vars`). This way, you can customize the configuration
@@ -160,7 +160,7 @@ Use "nomad-packfile [command] --help" for more information about a command.
 
 `nomad-packfile` currently allows three commands:
 
-- `plan`: This will execute a `nomad-pack plan` for every release in the desired state.
-- `render`: This will execute a `nomad-pack render` for every release in the desired state.
-- `run`: This will execute a `nomad-pack run` for every release in the desired state.
+- **plan**: This will execute a `nomad-pack plan` for every release in the desired state.
+- **render**: This will execute a `nomad-pack render` for every release in the desired state.
+- **run**: This will execute a `nomad-pack run` for every release in the desired state.
 
