@@ -175,7 +175,7 @@ func (n *NomadPackFile) Compile() error {
 
 	for name, environmentRelease := range n.config.Environments {
 		for _, release := range n.config.Releases {
-			if release.Environments != nil && !slices.Contains(release.Environments, name) && !slices.Contains(release.Environments, "all") {
+			if release.Environments != nil && !slices.Contains(release.Environments, name) {
 				continue
 			}
 
