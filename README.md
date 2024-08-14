@@ -10,7 +10,7 @@ It is used to deploy applications to Nomad using templates, this way
 packages can be reused and parametrized.
 
 ## Why another tool on top of that?
-Even though packages are declarative by themselves, their 'inistantaions' are not.
+Even though packages are declarative by themselves, their *instantaions* are not.
 
 This is because `nomad-pack` permits you to set up variables when running, etc. Moreover,
 you cannot define a set of packages to be deployed to the same or different environments.
