@@ -34,10 +34,28 @@ type RegistryNode struct {
 	NomadPackFile *NomadPackFile
 }
 
+type Pack struct {
+	Name     string
+	Registry *RegistryNode
+}
+
+func (p Pack) NomadPackCmdOpts() (params []string) {
+	if p.Registry != nil {
+		params = append(params, "--registry")
+		params = append(params, p.Registry.Name)
+		if p.Registry.Ref != nil {
+			params = append(params, "--ref")
+			params = append(params, *p.Registry.Ref)
+		}
+	}
+	params = append(params, p.Name)
+
+	return params
+}
+
 type ReleaseNode struct {
 	Name          string
-	Pack          string
-	Registry      RegistryNode
+	Pack          Pack
 	VarFiles      []string
 	Vars          map[string]string
 	workDir       string
@@ -62,7 +80,7 @@ func (release ReleaseNode) Plan() error {
 		log.Fatalf("Error getting initializing nomad-pack: %s", err)
 	}
 
-	return nomadPack.Plan(release.workDir, true, release.Registry.Name, release.Registry.Ref, release.Pack, release.VarFiles, release.Vars)
+	return nomadPack.Plan(release.workDir, true, release.VarFiles, release.Vars, release.Pack.NomadPackCmdOpts())
 }
 
 func (release ReleaseNode) Run() error {
@@ -71,7 +89,7 @@ func (release ReleaseNode) Run() error {
 	if err != nil {
 		log.Fatalf("Error getting initializing nomad-pack: %s", err)
 	}
-	return nomadPack.Run(release.workDir, true, release.Registry.Name, release.Registry.Ref, release.Pack, release.VarFiles, release.Vars)
+	return nomadPack.Run(release.workDir, true, release.VarFiles, release.Vars, release.Pack.NomadPackCmdOpts())
 }
 
 func (release ReleaseNode) Render() error {
@@ -80,7 +98,7 @@ func (release ReleaseNode) Render() error {
 		log.Fatalf("Error getting initializing nomad-pack: %s", err)
 	}
 
-	return nomadPack.Render(release.workDir, true, release.Registry.Name, release.Registry.Ref, release.Pack, release.VarFiles, release.Vars)
+	return nomadPack.Render(release.workDir, true, release.VarFiles, release.Vars, release.Pack.NomadPackCmdOpts())
 }
 
 func (release ReleaseNode) nomadPack() (nomadPack *nomadpack.NomadPack, err error) {
@@ -192,18 +210,30 @@ func (n *NomadPackFile) Compile() error {
 				},
 				Env: environmentToHash(),
 			}
+			var pack Pack
 
-			splitPack := strings.Split(release.Pack, "/")
-			if len(splitPack) != 2 {
-				log.Fatalf("Invalid pack name: %s", release.Pack)
+			if strings.HasPrefix(release.Pack, "registry://") {
+				release.Pack = strings.TrimPrefix(release.Pack, "registry://")
+				splitPack := strings.Split(release.Pack, "/")
+				if len(splitPack) != 2 {
+					log.Fatalf("Invalid pack name: %s", release.Pack)
+				}
+
+				if n.registries[splitPack[0]].Name == "" {
+					log.Fatalf("Registry %s not found", splitPack[0])
+				}
+
+				registry := n.registries[splitPack[0]]
+				pack = Pack{
+					Registry: &registry,
+					Name:     splitPack[1],
+				}
+			} else {
+				pack = Pack{
+					Name: release.Pack,
+				}
 			}
 
-			if n.registries[splitPack[0]].Name == "" {
-				log.Fatalf("Registry %s not found", splitPack[0])
-			}
-
-			registry := n.registries[splitPack[0]]
-			pack := splitPack[1]
 			workDir := n.config.WorkDir()
 
 			var err error
@@ -225,7 +255,12 @@ func (n *NomadPackFile) Compile() error {
 				if err != nil {
 					panic(err)
 				}
-				newVarFiles = append(newVarFiles, newVarFile)
+				filePath := workDir + "/" + newVarFile
+				if _, err := os.Stat(filePath); err == nil {
+					newVarFiles = append(newVarFiles, newVarFile)
+				} else {
+					pterm.Warning.Printf("Var file %s not found, skipping", filePath)
+				}
 			}
 
 			newVars := map[string]string{}
@@ -240,7 +275,6 @@ func (n *NomadPackFile) Compile() error {
 			releaseNode := ReleaseNode{
 				Name:          release.Name,
 				Pack:          pack,
-				Registry:      registry,
 				VarFiles:      newVarFiles,
 				workDir:       workDir,
 				NomadPackFile: n,

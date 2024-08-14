@@ -75,21 +75,13 @@ func (nomadPack *NomadPack) AddRegistry(name, source string, ref, target *string
 // pack: the pack to run.
 // varFiles: an array of var files to use.
 // vars: a map of vars to use.
-func (nomadPack *NomadPack) Plan(workDir string, diff bool, registry string, ref *string, pack string, varFiles []string, vars map[string]string) error {
+func (nomadPack *NomadPack) Plan(workDir string, diff bool, varFiles []string, vars map[string]string, extraParams []string) error {
 	err := nomadPack.ensureValidAuth()
 	if err != nil {
 		pterm.Error.Printf("Could not connect to Nomad Server: %v\n", err)
 		return err
 	}
 	params := []string{"plan", "--diff", "--exit-code-makes-changes=0"}
-	if registry != "" {
-		params = append(params, "--registry")
-		params = append(params, registry)
-	}
-	if ref != nil {
-		params = append(params, "--ref")
-		params = append(params, *ref)
-	}
 
 	for _, varFile := range varFiles {
 		params = append(params, "-var-file")
@@ -100,7 +92,7 @@ func (nomadPack *NomadPack) Plan(workDir string, diff bool, registry string, ref
 		params = append(params, "-var")
 		params = append(params, key+"="+value)
 	}
-	params = append(params, pack)
+	params = append(params, extraParams...)
 
 	cmd := exec.Command(nomadPack.binaryPath, params...)
 	cmd.Dir = workDir
@@ -114,22 +106,13 @@ func (nomadPack *NomadPack) Plan(workDir string, diff bool, registry string, ref
 	return err
 }
 
-func (nomadPack *NomadPack) Run(workDir string, diff bool, registry string, ref *string, pack string, varFiles []string, vars map[string]string) error {
+func (nomadPack *NomadPack) Run(workDir string, diff bool, varFiles []string, vars map[string]string, extraParams []string) error {
 	err := nomadPack.ensureValidAuth()
 	if err != nil {
 		pterm.Error.Printf("Could not connect to Nomad Server: %v\n", err)
 		return err
 	}
 	params := []string{"run"}
-	if registry != "" {
-		params = append(params, "--registry")
-		params = append(params, registry)
-	}
-	if ref != nil {
-		params = append(params, "--ref")
-		params = append(params, *ref)
-	}
-
 	for _, varFile := range varFiles {
 		params = append(params, "-var-file")
 		params = append(params, varFile)
@@ -139,8 +122,7 @@ func (nomadPack *NomadPack) Run(workDir string, diff bool, registry string, ref 
 		params = append(params, "-var")
 		params = append(params, key+"="+value)
 	}
-	params = append(params, pack)
-
+	params = append(params, extraParams...)
 	cmd := exec.Command(nomadPack.binaryPath, params...)
 	cmd.Dir = workDir
 
@@ -152,17 +134,8 @@ func (nomadPack *NomadPack) Run(workDir string, diff bool, registry string, ref 
 	return err
 }
 
-func (nomadPack *NomadPack) Render(workDir string, diff bool, registry string, ref *string, pack string, varFiles []string, vars map[string]string) error {
+func (nomadPack *NomadPack) Render(workDir string, diff bool, varFiles []string, vars map[string]string, extraParams []string) error {
 	params := []string{"render"}
-	if registry != "" {
-		params = append(params, "--registry")
-		params = append(params, registry)
-	}
-	if ref != nil {
-		params = append(params, "--ref")
-		params = append(params, *ref)
-	}
-
 	for _, varFile := range varFiles {
 		params = append(params, "-var-file")
 		params = append(params, varFile)
@@ -172,8 +145,8 @@ func (nomadPack *NomadPack) Render(workDir string, diff bool, registry string, r
 		params = append(params, "-var")
 		params = append(params, key+"="+value)
 	}
-	params = append(params, pack)
 
+	params = append(params, extraParams...)
 	cmd := exec.Command(nomadPack.binaryPath, params...)
 	cmd.Dir = workDir
 

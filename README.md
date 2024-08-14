@@ -121,8 +121,9 @@ that you can use templates inside these values.
 Releases can have:
 
 - **name**: The name of the release.
-- **pack**: The reference of the pack in the form of (`registry/pack`).
-- **var-files**: An array of varfiles to be added to
+- **pack**: The reference of the pack in the form of. By default it will treat it as a path, if you want to reference a registry, you need to use
+            `registry://registry_name/pack`.
+- **var-files**: An array of varfiles to be added to command invocation. If files are not found it will show a warning and skip it.
 - **vars**: An array of vars to be added to `nomad-pack` command invocation.
 - **environments**: This permits filtering out environments in case you don't want a given release to be deployed to every environment.
 - **nomad-addr**: Nomad addr to be used to deploy. This is usually set in the environment configuration.
@@ -163,4 +164,3 @@ Use "nomad-packfile [command] --help" for more information about a command.
 - **plan**: This will execute a `nomad-pack plan` for every release in the desired state.
 - **render**: This will execute a `nomad-pack render` for every release in the desired state.
 - **run**: This will execute a `nomad-pack run` for every release in the desired state.
-
