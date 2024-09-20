@@ -199,9 +199,6 @@ func (nomadPack *NomadPack) ensureValidAuth() error {
 	if nomadPack.nomadAddr == "" {
 		return fmt.Errorf("Nomad address is required")
 	}
-	if nomadPack.nomadToken == "" {
-		return fmt.Errorf("Nomad token is required")
-	}
 	nomadClient, err := nomad.NewClient(&nomad.Config{Address: nomadPack.nomadAddr, SecretID: nomadPack.nomadToken})
 	if err != nil {
 		return err

@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	configpkg "github.com/magec/nomad-packfile/internal/config"
@@ -40,9 +41,10 @@ var rootCmd = &cobra.Command{
 		var err error
 		config, err = configpkg.NewFromFile(cmd.Flag("file").Value.String(), cmd)
 		if err != nil {
-			panic(err)
+			fmt.Println("Error loading config file: ", cmd.Flag("file").Value.String())
+			fmt.Println(err)
+			os.Exit(1)
 		}
-
 	},
 }
 

@@ -16,13 +16,14 @@ type RegistryConfig struct {
 }
 
 type ReleaseConfig struct {
-	Name         string            `yaml:"name"`
-	Pack         string            `yaml:"pack"`
-	VarFiles     []string          `yaml:"var-files"`
-	Vars         map[string]string `yaml:"vars"`
-	Environments []string          `yaml:"environments"`
-	NomadAddr    string            `yaml:"nomad-addr"`
-	NomadToken   string            `yaml:"nomad-token"`
+	Name             string            `yaml:"name"`
+	Pack             string            `yaml:"pack"`
+	VarFiles         []string          `yaml:"var-files"`
+	Vars             map[string]string `yaml:"vars"`
+	Environments     []string          `yaml:"environments"`
+	EnvironmentFiles []string          `yaml:"environment-files"`
+	NomadAddr        string            `yaml:"nomad-addr"`
+	NomadToken       string            `yaml:"nomad-token"`
 }
 
 type Config struct {

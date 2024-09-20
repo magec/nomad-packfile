@@ -2,12 +2,14 @@ package nomadpackfile
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"slices"
 	"strings"
 	"text/template"
 
+	"github.com/joho/godotenv"
 	configpkg "github.com/magec/nomad-packfile/internal/config"
 	"github.com/magec/nomad-packfile/internal/nomadpack"
 	"github.com/pterm/pterm"
@@ -193,6 +195,12 @@ func (n *NomadPackFile) Compile() error {
 
 	for name, environmentRelease := range n.config.Environments {
 		for _, release := range n.config.Releases {
+			workDir := n.config.WorkDir()
+			fmt.Println("Release: ", release.Name)
+			fmt.Println("Environment: ", name)
+			fmt.Println("Release.Envirnoments: ", release.Environments)
+			fmt.Println("workDir: ", workDir)
+
 			if release.Environments != nil && !slices.Contains(release.Environments, name) {
 				continue
 			}
@@ -202,6 +210,15 @@ func (n *NomadPackFile) Compile() error {
 			}
 			if environmentRelease.NomadToken != "" {
 				release.NomadToken = environmentRelease.NomadToken
+			}
+			if release.EnvironmentFiles != nil {
+				for _, envFile := range release.EnvironmentFiles {
+					filePath := workDir + "/" + envFile
+					err := godotenv.Load(filePath)
+					if err != nil {
+						log.Fatalf("Error reading environment file %s: %s", envFile, err)
+					}
+				}
 			}
 
 			context := templateContext{
@@ -233,8 +250,6 @@ func (n *NomadPackFile) Compile() error {
 					Name: release.Pack,
 				}
 			}
-
-			workDir := n.config.WorkDir()
 
 			var err error
 			release.NomadAddr, err = execTemplate(release.NomadAddr, context)
