@@ -65,4 +65,5 @@ func init() {
 	rootCmd.PersistentFlags().StringP("file", "f", "packfile.yaml", `Load config from file or directory`)
 	rootCmd.PersistentFlags().String("nomad-pack-binary", "nomad-pack", `Path to the nomad-pack binary.`)
 	rootCmd.PersistentFlags().String("log-level", "fatal", `Log Level.`)
+	rootCmd.PersistentFlags().StringSlice("var", []string{}, `Variables to pass to nomad-pack (can be specified multiple times, format: key=value)`)
 }

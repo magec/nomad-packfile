@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -32,6 +33,7 @@ type Config struct {
 	Releases        []ReleaseConfig          `yaml:"releases"`
 	Path            string                   `yaml:"-"`
 	NomadPackBinary string                   `yaml:"-"`
+	ExtraVars       map[string]string        `yaml:"-"`
 }
 
 // WorkDir returns the directory where the packfile is located.
@@ -73,6 +75,21 @@ func NewFromFile(file string, cmd *cobra.Command) (*Config, error) {
 
 	config.Path = file
 	config.NomadPackBinary, err = cmd.Flags().GetString("nomad-pack-binary")
+
+	// Parse --var flags
+	varFlags, err := cmd.Flags().GetStringSlice("var")
+	if err != nil {
+		return nil, err
+	}
+	
+	config.ExtraVars = make(map[string]string)
+	for _, varFlag := range varFlags {
+		// Split on first = to support values with = in them
+		parts := strings.SplitN(varFlag, "=", 2)
+		if len(parts) == 2 {
+			config.ExtraVars[parts[0]] = parts[1]
+		}
+	}
 
 	return &config, err
 }

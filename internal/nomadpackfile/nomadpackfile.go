@@ -286,6 +286,11 @@ func (n *NomadPackFile) Compile() error {
 				}
 				newVars[key] = newVar
 			}
+			
+			// Merge extra vars from command line (these override release vars)
+			for key, value := range n.config.ExtraVars {
+				newVars[key] = value
+			}
 
 			releaseNode := ReleaseNode{
 				Name:          release.Name,
